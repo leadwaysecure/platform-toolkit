@@ -1,0 +1,85 @@
+# Developer Hub (Backstage) software template: new-service golden path.
+# Register it in Developer Hub: Catalog > Register existing component > URL to this file.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: new-service
+  title: New containerized service
+  description: Repo with Dockerfile, Helm chart and catalog entry, onboarded through GitOps
+  tags: [recommended, helm, openshift]
+spec:
+  owner: group:platform-team
+  type: service
+
+  parameters:
+    - title: Service details
+      required: [name, owner, team]
+      properties:
+        name:
+          title: Service name
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owning group
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter: { kind: Group }
+        team:
+          title: Team project (OpenShift namespace)
+          type: string
+        port:
+          title: Container port
+          type: integer
+          default: 8080
+    - title: Repository
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+
+  steps:
+    - id: fetch
+      name: Generate from skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          team: ${{ parameters.team }}
+          port: ${{ parameters.port }}
+
+    - id: publish
+      name: Create repository
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+
+    - id: register
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+    # TODO(you): add a step that opens a pull request against your Argo CD repo
+    # (action: publish:github:pull-request) adding an Application for this service.
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

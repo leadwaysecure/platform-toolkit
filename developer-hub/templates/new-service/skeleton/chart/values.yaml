@@ -1,0 +1,10 @@
+image:
+  repository: quay.io/YOUR_ORG/${{ values.name }}
+  tag: "0.1.0"
+replicas: 2
+port: ${{ values.port }}
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits:   { cpu: 500m, memory: 256Mi }
+route:
+  enabled: true
